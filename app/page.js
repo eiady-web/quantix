@@ -145,7 +145,7 @@ function Landing({ t, rtl, lang, setLang, dark, setDark, onEnter }) {
               <p className="text-lg text-muted-foreground leading-relaxed max-w-xl">{t.heroSubtitle}</p>
               <div className="flex gap-3 flex-wrap">
                 <Button size="lg" onClick={onEnter} className="gap-2 h-12 px-6 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600">{t.getStarted}<ArrowRight className="h-4 w-4 rtl:rotate-180" /></Button>
-                <Button size="lg" variant="outline" className="h-12 px-6">{t.watchDemo}</Button>
+                <Button size="lg" variant="outline" className="h-12 px-6" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>{t.watchDemo}</Button>
               </div>
               <div className="flex gap-6 pt-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" />AI-powered</div>
@@ -169,7 +169,7 @@ function Landing({ t, rtl, lang, setLang, dark, setDark, onEnter }) {
         </div>
       </section>
 
-      <section className="container mx-auto px-4 max-w-7xl py-20">
+      <section id="features" className="container mx-auto px-4 max-w-7xl py-20">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold mb-3">{t.features}</h2>
           <p className="text-muted-foreground text-lg">World-class tools for modern construction professionals.</p>
