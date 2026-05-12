@@ -92,6 +92,24 @@ async function handleProjects(method, parts, request) {
   return json({ error: 'Not found' }, 404)
 }
 
+async function callGemini(parts, { model = 'gemini-2.5-flash', maxOutputTokens = 8192, jsonMode = false } = {}) {
+  const key = process.env.GOOGLE_API_KEY
+  if (!key) throw new Error('GOOGLE_API_KEY missing')
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
+  const generationConfig = { temperature: 0.4, maxOutputTokens }
+  if (jsonMode) generationConfig.responseMimeType = 'application/json'
+  const body = { contents: [{ role: 'user', parts }], generationConfig }
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await r.json()
+  if (!r.ok) throw new Error(data.error?.message || `Gemini error ${r.status}`)
+  const text = data.candidates?.[0]?.content?.parts?.map(p => p.text).filter(Boolean).join('') || ''
+  return text
+}
+
 async function handleExtract(request) {
   const body = await readBody(request)
   const { imageBase64, mimeType = 'image/jpeg' } = body
@@ -138,22 +156,12 @@ REQUIREMENTS:
 - NEVER include markdown fences. Output raw JSON only.`
 
   try {
-    const llm = getLLM()
-    const completion = await llm.chat.completions.create({
-      model: 'gpt-5-mini',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
-          ],
-        },
-      ],
-    })
-
-    const text = completion.choices[0]?.message?.content || ''
-    const match = text.match(/\{[\s\S]*\}/)
+    const text = await callGemini([
+      { text: prompt },
+      { inlineData: { mimeType, data: imageBase64 } },
+    ], { jsonMode: true, maxOutputTokens: 16384 })
+    let cleaned = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()
+    const match = cleaned.match(/\{[\s\S]*\}/)
     if (!match) return json({ error: 'Failed to parse AI output', raw: text }, 500)
     const parsed = JSON.parse(match[0])
     return json(parsed)
