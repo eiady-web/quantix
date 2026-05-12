@@ -51,7 +51,7 @@ async function handleProjects(method, parts, request) {
   const col = db.collection('projects')
 
   if (method === 'GET' && parts.length === 1) {
-    const list = await col.find({}).sort({ createdAt: -1 }).toArray()
+    const list = await col.find({}).sort({ createdAt: -1 }).limit(100).toArray()
     return json(list.map(p => ({ ...p, _id: undefined })))
   }
   if (method === 'GET' && parts.length === 2) {
