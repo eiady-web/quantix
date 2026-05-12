@@ -97,29 +97,50 @@ async function handleExtract(request) {
   const { imageBase64, mimeType = 'image/jpeg' } = body
   if (!imageBase64) return json({ error: 'imageBase64 required' }, 400)
 
-  const prompt = `You are an expert construction quantity surveyor. Analyze this architectural drawing/blueprint and extract a detailed quantity takeoff.
+  const prompt = `You are an expert quantity surveyor. Analyze this architectural/construction drawing in detail.
 
-Return ONLY valid JSON (no markdown, no prose) with this exact structure:
+Return ONLY valid JSON (no markdown, no comments) with this EXACT structure:
 {
-  "summary": { "totalRooms": number, "totalArea": number, "totalDoors": number, "totalWindows": number },
-  "rooms": [ { "name": string, "width": number, "length": number, "area": number } ],
+  "summary": {
+    "totalRooms": number,
+    "totalArea": number,
+    "totalDoors": number,
+    "totalWindows": number,
+    "totalOpenings": number,
+    "perimeter": number,
+    "drawingType": "floor_plan|elevation|section|detail|site_plan|other",
+    "scale": "string e.g. 1:100 or unknown"
+  },
+  "rooms": [
+    { "name": "string", "width": number_meters, "length": number_meters, "area": number_m2, "perimeter": number_m }
+  ],
+  "openings": [
+    { "type": "door|window|opening", "label": "D1, W2 etc if visible", "width": number_m, "height": number_m, "area": number_m2, "location": "string", "count": number }
+  ],
   "items": [
-    { "category": "floor|wall|ceiling|door|window|concrete|steel|paint|plumbing|electrical|other",
-      "description": string,
+    { "category": "floor|wall|ceiling|door|window|concrete|steel|paint|plaster|plumbing|electrical|insulation|tile|other",
+      "description": "detailed item description with material/size",
       "quantity": number,
       "unit": "m2|m3|m|pcs|kg|L",
-      "confidence": number,
-      "unitPrice": number,
-      "location": string }
+      "confidence": number_0_to_1,
+      "unitPrice": estimated_USD_unit_price,
+      "location": "where in the drawing" }
   ]
 }
 
-Identify EVERY quantifiable element: floor areas (tiles/marble), wall areas (paint/plaster/blocks), ceilings, doors and windows with sizes, concrete volumes if structural, plumbing fixtures, electrical points, etc. Estimate reasonable unit prices in USD. Be exhaustive and precise.`
+REQUIREMENTS:
+- Identify EVERY door and window with its width × height and compute area.
+- List every room with width, length, computed area and perimeter.
+- For each room, generate BOQ items for: floor finish, wall paint/plaster (use perimeter × ceiling height 3m minus openings), ceiling, and any visible features.
+- Include estimated unit prices in USD based on typical 2025 construction prices.
+- If a dimension is not clearly visible, estimate reasonably and lower the confidence score.
+- Be exhaustive: aim for 15-40 BOQ items minimum on a typical floor plan.
+- NEVER include markdown fences. Output raw JSON only.`
 
   try {
     const llm = getLLM()
     const completion = await llm.chat.completions.create({
-      model: 'gpt-5',
+      model: 'gpt-5-mini',
       messages: [
         {
           role: 'user',
@@ -158,7 +179,7 @@ ${projectContext ? `\nCurrent project context:\n${JSON.stringify(projectContext)
   try {
     const llm = getLLM()
     const completion = await llm.chat.completions.create({
-      model: 'gpt-5',
+      model: 'gpt-5-mini',
       messages: [
         { role: 'system', content: system },
         ...messages,

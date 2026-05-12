@@ -478,7 +478,14 @@ function AIVisionTab({ t, activeProject, updateProject }) {
         body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
       })
       const data = await r.json()
-      if (data.error) { toast.error(data.error); return }
+      if (data.error) {
+        if (String(data.error).toLowerCase().includes('budget')) {
+          toast.error('AI credits exhausted. Please top up your Emergent LLM key budget.')
+        } else {
+          toast.error(data.error)
+        }
+        return
+      }
       setExtracted(data)
       toast.success(`AI extracted ${data.items?.length || 0} items`)
     } catch (e) { toast.error(e.message) }
@@ -548,6 +555,33 @@ function AIVisionTab({ t, activeProject, updateProject }) {
                   <Mini label="Windows" value={extracted.summary.totalWindows} />
                 </div>
               )}
+              {extracted.rooms?.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-sm font-semibold mb-2">Rooms ({extracted.rooms.length})</div>
+                  <div className="space-y-1.5">
+                    {extracted.rooms.map((r, i) => (
+                      <div key={i} className="text-xs flex justify-between p-2 bg-accent/30 rounded">
+                        <span className="font-medium">{r.name}</span>
+                        <span className="text-muted-foreground">{r.width}×{r.length}m = <b>{r.area} m²</b></span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {extracted.openings?.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-sm font-semibold mb-2">Openings ({extracted.openings.length})</div>
+                  <div className="space-y-1.5">
+                    {extracted.openings.map((o, i) => (
+                      <div key={i} className="text-xs flex justify-between p-2 bg-accent/30 rounded">
+                        <span><Badge variant="outline" className="me-2">{o.type}</Badge>{o.label || o.location}</span>
+                        <span className="text-muted-foreground">{o.width}×{o.height}m = <b>{o.area} m²</b> {o.count > 1 && `(×${o.count})`}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="text-sm font-semibold mb-2">BOQ Items</div>
               <div className="space-y-2">
                 {extracted.items?.map((it, i) => (
                   <div key={i} className="p-3 border rounded-lg flex items-center justify-between gap-2">
